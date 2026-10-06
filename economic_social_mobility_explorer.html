@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Economic & Social Mobility Explorer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        },
+                        mobility: {
+                            worse: '#f43f5e',   // Rose 500
+                            same: '#f59e0b',    // Amber 500
+                            more: '#10b981',    // Emerald 500
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Interactive flow paths */
+        .sankey-link {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .sankey-link:hover {
+            stroke-opacity: 0.85 !important;
+            filter: drop-shadow(0 0 6px rgba(14, 165, 233, 0.5));
+        }
+
+        /* Glassmorphism effects */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-panel-hover {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .glass-panel-hover:hover {
+            border-color: rgba(14, 165, 233, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Slider customization */
+        input[type=range] {
+            accent-color: #38bdf8;
+        }
+
+        /* Animations */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 0.3; }
+        }
+        .pulse-glow {
+            animation: pulseGlow 2.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 antialiased selection:bg-sky-500 selection:text-white pb-16">
+
+    <!-- Sticky Navigation Header -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800 backdrop-blur-md bg-slate-900/90">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-xl text-white shadow-lg shadow-sky-500/20">
+                        <i data-lucide="trending-up" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg sm:text-xl tracking-tight text-white flex items-center gap-2">
+                            Economic & Social Mobility Explorer
+                            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 hidden sm:inline-block">Chetty / Opportunity Insights Model</span>
+                        </h1>
+                        <p class="text-xs text-slate-400 hidden sm:block">Intergenerational Income Dynamics in America (Birth Cohorts 1940–2000)</p>
+                    </div>
+                </div>
+
+                <!-- Nav Links -->
+                <nav class="hidden md:flex items-center space-x-1 text-sm font-medium">
+                    <a href="#flow-section" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Flow Visualizer</a>
+                    <a href="#trends-section" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Cohort Trends</a>
+                    <a href="#calculator-section" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Personal Simulator</a>
+                    <a href="#whatif-section" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">What-If Engine</a>
+                    <a href="#insights-section" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Research Insights</a>
+                </nav>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="exportSummaryReport()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                        <i data-lucide="share-2" class="w-3.5 h-3.5 text-sky-400"></i>
+                        <span>Export Summary</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
+
+        <!-- SECTION 1: COHORT TIMELINE CONTROLLER -->
+        <section class="glass-panel rounded-2xl p-6 relative overflow-hidden">
+            <div class="absolute -right-16 -top-16 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-bold uppercase tracking-wider text-sky-400">Interactive Cohort Selection</span>
+                        <span id="generationLabelBadge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Baby Boomer Era</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Birth Cohort: <span id="currentYearDisplay" class="text-sky-400 font-mono">1980</span></h2>
+                    <p class="text-sm text-slate-400 mt-1 max-w-2xl">
+                        Select a birth year to analyze how children born in that year fared relative to their parents when reaching adulthood (~Age 30).
+                    </p>
+                </div>
+
+                <!-- Generation Preset Buttons -->
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button onclick="setYear(1942)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="silent">
+                        Silent Gen (1940-45)
+                    </button>
+                    <button onclick="setYear(1955)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="boomer">
+                        Boomers (1946-64)
+                    </button>
+                    <button onclick="setYear(1972)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="genx">
+                        Gen X (1965-80)
+                    </button>
+                    <button onclick="setYear(1988)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-sky-500/20 text-sky-300 border border-sky-500/40 transition" data-gen="millennial">
+                        Millennials (1981-96)
+                    </button>
+                    <button onclick="setYear(1999)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="genz">
+                        Gen Z (1997-2000+)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Timeline Slider Controls -->
+            <div class="space-y-4">
+                <div class="flex items-center gap-4">
+                    <button id="playPauseBtn" onclick="toggleTimelinePlay()" class="p-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition flex items-center justify-center shadow-lg shadow-sky-500/25">
+                        <i id="playIcon" data-lucide="play" class="w-5 h-5 fill-current"></i>
+                    </button>
+
+                    <div class="flex-1 relative">
+                        <input type="range" id="yearSlider" min="1940" max="2000" value="1980" step="1" 
+                               oninput="onSliderInput(this.value)" 
+                               class="w-full h-3 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                        
+                        <!-- Timeline key markers -->
+                        <div class="flex justify-between text-[11px] font-mono text-slate-400 mt-2 px-1">
+                            <span>1940 (91.5% Up)</span>
+                            <span>1955 (74% Up)</span>
+                            <span>1970 (58% Up)</span>
+                            <span>1984 (50% Up)</span>
+                            <span>2000 (44% Up)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: THREE MOBILITY GROUPS SUMMARY METRICS -->
+        <section id="flow-section" class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-5 h-5 text-sky-400"></i>
+                        3 Key Mobility Outcome Groups
+                    </h3>
+                    <p class="text-xs text-slate-400">Inflation-adjusted household income comparison of adult children vs. parents at age 30</p>
+                </div>
+                <!-- Filter Parent Starting Quintile toggle -->
+                <div class="flex items-center gap-2 bg-slate-800/90 p-1.5 rounded-xl border border-slate-700/80">
+                    <span class="text-xs font-semibold text-slate-300 pl-2">Filter Parent Class:</span>
+                    <select id="parentQuintileSelect" onchange="updateParentFilter(this.value)" class="bg-slate-900 text-xs font-medium text-sky-300 px-2.5 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-sky-500">
+                        <option value="ALL">All Parent Backgrounds (National Avg)</option>
+                        <option value="Q1">Q1: Bottom 20% (&lt; $28k)</option>
+                        <option value="Q2">Q2: Lower-Middle 20% ($28k-$52k)</option>
+                        <option value="Q3">Q3: Middle 20% ($52k-$82k)</option>
+                        <option value="Q4">Q4: Upper-Middle 20% ($82k-$125k)</option>
+                        <option value="Q5">Q5: Top 20% (&gt; $125k)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 3 Group Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Group 1: Worse Off -->
+                <div class="glass-panel glass-panel-hover rounded-2xl p-6 border-l-4 border-l-rose-500 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-rose-400">Group 1 • Downward</span>
+                            <h4 class="text-lg font-bold text-white mt-0.5">Worse Off Than Parents</h4>
+                        </div>
+                        <div class="p-2 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20">
+                            <i data-lucide="trending-down" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-baseline gap-2">
+                        <span id="group1Val" class="text-4xl sm:text-5xl font-black font-mono text-rose-400">43.0%</span>
+                        <span class="text-xs text-slate-400">of cohort</span>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
+                        <div id="group1Bar" class="bg-rose-500 h-full transition-all duration-500" style="width: 43%;"></div>
+                    </div>
+                    <p id="group1Desc" class="text-xs text-slate-400 mt-3 leading-relaxed">
+                        Earn less real inflation-adjusted income than their parents did at the same stage of life.
+                    </p>
+                </div>
+
+                <!-- Group 2: Earning Same -->
+                <div class="glass-panel glass-panel-hover rounded-2xl p-6 border-l-4 border-l-amber-500 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Group 2 • Parity</span>
+                            <h4 class="text-lg font-bold text-white mt-0.5">Earning Approx. Same</h4>
+                        </div>
+                        <div class="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                            <i data-lucide="minus-square" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-baseline gap-2">
+                        <span id="group2Val" class="text-4xl sm:text-5xl font-black font-mono text-amber-400">7.0%</span>
+                        <span class="text-xs text-slate-400">within ±5% range</span>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
+                        <div id="group2Bar" class="bg-amber-500 h-full transition-all duration-500" style="width: 7%;"></div>
+                    </div>
+                    <p id="group2Desc" class="text-xs text-slate-400 mt-3 leading-relaxed">
+                        Maintain baseline economic status with earnings within 5% of their parental background.
+                    </p>
+                </div>
+
+                <!-- Group 3: Earning More -->
+                <div class="glass-panel glass-panel-hover rounded-2xl p-6 border-l-4 border-l-emerald-500 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Group 3 • Upward</span>
+                            <h4 class="text-lg font-bold text-white mt-0.5">Earning More Than Parents</h4>
+                        </div>
+                        <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                            <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-baseline gap-2">
+                        <span id="group3Val" class="text-4xl sm:text-5xl font-black font-mono text-emerald-400">50.0%</span>
+                        <span class="text-xs text-slate-400">American Dream index</span>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
+                        <div id="group3Bar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 50%;"></div>
+                    </div>
+                    <p id="group3Desc" class="text-xs text-slate-400 mt-3 leading-relaxed">
+                        Achieved absolute upward economic mobility, surpassing parental inflation-adjusted income.
+                    </p>
+                </div>
+            </div>
+
+            <!-- SANKEY & MATRIX VISUALIZER CONTAINER -->
+            <div class="glass-panel rounded-2xl p-6 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i data-lucide="git-commit" class="w-5 h-5 text-sky-400"></i>
+                            Starting Point (Parents) &rarr; Ending Point (Adult Children) Transitions
+                        </h3>
+                        <p class="text-xs text-slate-400">Visualizing flow from parental household income quintile to child adult income quintile</p>
+                    </div>
+
+                    <div class="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                        <button id="viewModeFlowBtn" onclick="switchViewMode('flow')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500 text-slate-950 transition">
+                            Sankey Flow Diagram
+                        </button>
+                        <button id="viewModeMatrixBtn" onclick="switchViewMode('matrix')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition">
+                            Transition Matrix
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive SVG Flow Canvas View -->
+                <div id="sankeyViewContainer" class="relative overflow-x-auto min-h-[420px]">
+                    <div id="flowDiagramHelp" class="text-xs text-slate-400 mb-2 flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50 w-fit">
+                        <i data-lucide="info" class="w-4 h-4 text-sky-400"></i>
+                        <span>Click any parent node on the left or flow path to filter outcomes for that starting economic class.</span>
+                    </div>
+
+                    <svg id="sankeySvg" viewBox="0 0 850 420" class="w-full h-auto min-w-[700px] select-none">
+                        <!-- SVG Paths and Nodes rendered dynamically via JS -->
+                    </svg>
+                </div>
+
+                <!-- Transition Matrix View (Hidden by default) -->
+                <div id="matrixViewContainer" class="hidden overflow-x-auto">
+                    <table class="w-full text-sm text-left text-slate-300 border-collapse">
+                        <thead class="text-xs uppercase bg-slate-900/90 text-slate-400 font-mono">
+                            <tr>
+                                <th class="p-3 border border-slate-800">Parent Quintile \ Child Quintile</th>
+                                <th class="p-3 border border-slate-800 text-center bg-rose-950/20 text-rose-300">Q1 (Bottom 20%)</th>
+                                <th class="p-3 border border-slate-800 text-center">Q2 (Lower-Mid)</th>
+                                <th class="p-3 border border-slate-800 text-center">Q3 (Middle)</th>
+                                <th class="p-3 border border-slate-800 text-center">Q4 (Upper-Mid)</th>
+                                <th class="p-3 border border-slate-800 text-center bg-emerald-950/20 text-emerald-300">Q5 (Top 20%)</th>
+                                <th class="p-3 border border-slate-800 text-center bg-sky-950/20 text-sky-300">% Earned More</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixTableBody" class="font-mono text-xs">
+                            <!-- Populated dynamically via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Dynamic Mobility Story Insights Footer -->
+                <div id="flowStoryBox" class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs sm:text-sm text-slate-300 flex items-start gap-3">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-sky-400 shrink-0 mt-0.5"></i>
+                    <div id="flowStoryText">
+                        Loading cohort dynamics...
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: HISTORICAL TRENDS & COHORT COMPARISON -->
+        <section id="trends-section" class="space-y-6">
+            <div>
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i data-lucide="line-chart" class="w-5 h-5 text-sky-400"></i>
+                    Historical Mobility Trends (1940 – 2000)
+                </h3>
+                <p class="text-xs text-slate-400">Chetty et al. empirical findings showing the decline of absolute income mobility across American generations</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Trend Chart 1: The Fading American Dream -->
+                <div class="glass-panel rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-white text-sm sm:text-base">Absolute Mobility Rate Over Time</h4>
+                            <p class="text-xs text-slate-400">% of children earning more than parents at age 30</p>
+                        </div>
+                        <span class="text-xs font-mono px-2 py-1 bg-sky-500/10 text-sky-400 rounded border border-sky-500/20">1940: 91.5% &rarr; 2000: 44%</span>
+                    </div>
+                    <div class="h-64 sm:h-72 relative">
+                        <canvas id="absoluteMobilityChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Trend Chart 2: 3 Groups Stacked Area -->
+                <div class="glass-panel rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-white text-sm sm:text-base">Mobility Outcomes Composition</h4>
+                            <p class="text-xs text-slate-400">Breakdown of Group 1 (Worse), Group 2 (Same), Group 3 (More)</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>Worse</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>Same</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>More</span>
+                        </div>
+                    </div>
+                    <div class="h-64 sm:h-72 relative">
+                        <canvas id="stackedGroupsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Odds Comparison Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="glass-panel rounded-xl p-4 flex items-center gap-4">
+                    <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                        <i data-lucide="zap" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs font-semibold text-slate-400">"Rags to Riches" (Q1 &rarr; Q5)</span>
+                        <div id="ragsToRichesVal" class="text-xl font-bold font-mono text-emerald-400 mt-0.5">10.5%</div>
+                        <p class="text-[11px] text-slate-400">Odds a bottom 20% child reaches top 20%</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-4 flex items-center gap-4">
+                    <div class="p-3 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20">
+                        <i data-lucide="anchor" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs font-semibold text-slate-400">"Stuck at Bottom" (Q1 &rarr; Q1)</span>
+                        <div id="stuckAtBottomVal" class="text-xl font-bold font-mono text-rose-400 mt-0.5">33.7%</div>
+                        <p class="text-[11px] text-slate-400">Odds a bottom 20% child remains in Q1</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-4 flex items-center gap-4">
+                    <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
+                        <i data-lucide="shield-check" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs font-semibold text-slate-400">"Sticky at Top" (Q5 &rarr; Q5)</span>
+                        <div id="stickyAtTopVal" class="text-xl font-bold font-mono text-indigo-400 mt-0.5">34.6%</div>
+                        <p class="text-[11px] text-slate-400">Odds a top 20% child stays in top 20%</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: PERSONAL MOBILITY CALCULATOR & SIMULATOR -->
+        <section id="calculator-section" class="glass-panel rounded-2xl p-6 relative overflow-hidden">
+            <div class="max-w-3xl">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-sky-400">Personal Mobility Benchmark</span>
+                </div>
+                <h3 class="text-2xl font-bold text-white tracking-tight">Personal Mobility Calculator & Simulator</h3>
+                <p class="text-sm text-slate-400 mt-1">
+                    Input your birth year, your parents' household income at age 30, and your adult household income to compute real inflation-adjusted mobility and determine which group you belong to.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+                <!-- Inputs Form Column -->
+                <div class="lg:col-span-5 space-y-4 bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Your Birth Year</label>
+                        <input type="number" id="calcBirthYear" value="1985" min="1940" max="2010" 
+                               class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            Parents' Household Income ($ at their age 30)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-2 text-slate-500 text-sm">$</span>
+                            <input type="number" id="calcParentIncome" value="35000" step="1000" 
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">e.g., Household income around year <span id="calcParentYearHint">2015</span></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            Your Current Household Income ($ Today)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-2 text-slate-500 text-sm">$</span>
+                            <input type="number" id="calcUserIncome" value="75000" step="1000" 
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono">
+                        </div>
+                    </div>
+
+                    <button onclick="calculatePersonalMobility()" class="w-full py-2.5 px-4 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold rounded-lg transition shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 text-sm">
+                        <i data-lucide="calculator" class="w-4 h-4"></i>
+                        <span>Calculate Real Mobility</span>
+                    </button>
+                </div>
+
+                <!-- Calculator Results Display Column -->
+                <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+                    <div id="calcResultBox" class="p-6 rounded-xl bg-slate-900 border border-slate-800 space-y-4 h-full flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                                <span class="text-xs font-mono uppercase tracking-wider text-slate-400">Inflation-Adjusted Mobility Verdict</span>
+                                <span id="calcGroupBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    Group 3: Upward Mobility
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 my-4">
+                                <div>
+                                    <span class="text-xs text-slate-400 block">Parents' Real Income (2026 $)</span>
+                                    <span id="calcParentsRealIncome" class="text-xl font-bold font-mono text-slate-200">$58,800</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400 block">Your Current Household Income</span>
+                                    <span id="calcUserRealIncome" class="text-xl font-bold font-mono text-sky-400">$75,000</span>
+                                </div>
+                            </div>
+
+                            <div class="p-3 rounded-lg bg-slate-800/60 text-xs sm:text-sm space-y-1 border border-slate-700/50">
+                                <p class="text-slate-300">
+                                    Real Difference: <span id="calcRealDiffVal" class="font-bold text-emerald-400 font-mono">+$16,200 (+27.6%)</span>
+                                </p>
+                                <p id="calcPercentileText" class="text-slate-400 text-xs">
+                                    You moved from approximately parental Quintile Q3 to child Quintile Q4.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-800">
+                            <h5 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Cohort Benchmark Comparison</h5>
+                            <p id="calcCohortBenchmarkText" class="text-xs text-slate-300 leading-relaxed">
+                                For people born in 1985, approximately <b>48.2%</b> earned more than their parents. Your household income places you above national median growth for your cohort background.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: WHAT-IF COUNTERFACTUAL SIMULATOR -->
+        <section id="whatif-section" class="glass-panel rounded-2xl p-6 space-y-6">
+            <div class="max-w-3xl">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-sky-400">Macroeconomic Policy Lab</span>
+                </div>
+                <h3 class="text-2xl font-bold text-white tracking-tight">"What-If" Mobility Counterfactual Engine</h3>
+                <p class="text-sm text-slate-400 mt-1">
+                    Chetty's research demonstrated that the decline in absolute mobility was driven by two main factors: slower GDP growth and less equal distribution of growth. Adjust the parameters below to see how counterfactual policies would alter national mobility rates.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div class="lg:col-span-5 space-y-5 bg-slate-900/80 p-5 rounded-xl border border-slate-800">
+                    <!-- Control 1: GDP Growth Rate -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs">
+                            <span class="font-bold text-slate-300">Annual Economic Growth Rate (GDP)</span>
+                            <span id="whatifGdpDisplay" class="font-mono text-sky-400 font-bold">2.0% (Modern Baseline)</span>
+                        </div>
+                        <input type="range" id="whatifGdpSlider" min="1.0" max="4.5" step="0.1" value="2.0" 
+                               oninput="updateWhatIfSim()" class="w-full h-2 bg-slate-800 rounded-lg">
+                        <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                            <span>1.0% (Slow Growth)</span>
+                            <span>2.5% (Baseline)</span>
+                            <span>4.0% (1950s Boom)</span>
+                        </div>
+                    </div>
+
+                    <!-- Control 2: Growth Distribution / Equality -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs">
+                            <span class="font-bold text-slate-300">Growth Distribution Equality Index</span>
+                            <span id="whatifEqualDisplay" class="font-mono text-indigo-400 font-bold">Current Inequality Level</span>
+                        </div>
+                        <input type="range" id="whatifEqualSlider" min="0" max="100" step="5" value="20" 
+                               oninput="updateWhatIfSim()" class="w-full h-2 bg-slate-800 rounded-lg">
+                        <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                            <span>0 (High Inequality)</span>
+                            <span>50 (Moderate)</span>
+                            <span>100 (1940 Equal Share)</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50 text-xs text-slate-300 space-y-1">
+                        <div class="font-bold text-sky-400 flex items-center gap-1">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                            Key Research Discovery:
+                        </div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            Chetty et al. found that restoring 1940s growth <i>distribution</i> (equal growth) recovers <b>~70%</b> of the faded mobility, whereas raising GDP growth alone only recovers <b>~30%</b>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Sim Output Card & Visual Comparison -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-5 rounded-xl bg-slate-900 border border-slate-800 text-center">
+                            <span class="text-xs text-slate-400 uppercase tracking-wider block">Actual Modern Mobility</span>
+                            <div class="text-3xl font-black font-mono text-slate-400 mt-2">50.0%</div>
+                            <p class="text-[11px] text-slate-500 mt-1">1980s Cohort Baseline</p>
+                        </div>
+
+                        <div class="p-5 rounded-xl bg-slate-900 border border-sky-500/40 text-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 bg-sky-500 text-slate-950 font-bold text-[10px] px-2 py-0.5 rounded-bl">SIMULATED</div>
+                            <span class="text-xs text-sky-400 font-semibold uppercase tracking-wider block">Simulated Mobility Rate</span>
+                            <div id="whatifSimVal" class="text-4xl font-black font-mono text-sky-400 mt-1">50.0%</div>
+                            <p id="whatifSimDiff" class="text-xs text-emerald-400 font-mono mt-1">+0.0% baseline increase</p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                        <span class="font-bold text-white block mb-1">Policy Takeaway:</span>
+                        <span id="whatifTakeawayText">
+                            Adjusting both GDP growth and growth distribution illustrates how macroeconomic policy impacts absolute mobility across generations.
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: ECONOMIC DRIVERS & RESEARCH INSIGHTS -->
+        <section id="insights-section" class="space-y-6">
+            <div>
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-5 h-5 text-sky-400"></i>
+                    Core Empirical Drivers & Policy Insights
+                </h3>
+                <p class="text-xs text-slate-400">Synthesizing findings from Chetty, Hendren, Kline, Saez & Opportunity Insights</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Card 1 -->
+                <div class="glass-panel glass-panel-hover rounded-2xl p-5 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center border border-sky-500/20">
+                        <i data-lucide="scale" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-white text-base">Growth vs. Distribution</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        In the 1940s, rapid GDP growth was paired with broad income sharing across all quintiles. Since 1980, productivity gains concentrated heavily in the top quintile, shrinking upward mobility for lower income groups.
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="glass-panel glass-panel-hover rounded-2xl p-5 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                        <i data-lucide="map-pin" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-white text-base">Geographic Geography</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Mobility varies dramatically by commuting zone. Cities with lower spatial segregation, higher social capital, better public schools, and stronger family structure exhibit upwards of 2x higher upward mobility.
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="glass-panel glass-panel-hover rounded-2xl p-5 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-white text-base">Higher Ed Colleges</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Colleges serve as mobility engines. Mid-tier public universities (e.g., CUNY, Cal State) have the highest "Mobility Rates" by taking large percentages of low-income students and elevating them into the top quintile.
+                    </p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="glass-panel glass-panel-hover rounded-2xl p-5 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-white text-base">Economic Connectedness</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Cross-class social ties ("Economic Connectedness") are among the strongest predictors of upward mobility. Low-income children who grow up in neighborhoods with high cross-class interaction experience higher earnings.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
+        <p>Economic & Social Mobility Interactive Explorer • Built with Empirical Data Models from Opportunity Insights (Raj Chetty et al.)</p>
+        <p class="mt-1">Note: All values inflation-adjusted using CPI-U-RS / PCE equivalents. For educational and research visualization purposes.</p>
+    </footer>
+
+    <script>
+        
+        // State Variables
+        let currentYear = 1980;
+        let selectedParentFilter = "ALL"; // ALL, Q1, Q2, Q3, Q4, Q5
+        let currentViewMode = "flow"; // flow or matrix
+        let isPlaying = false;
+        let playInterval = null;
+
+        // Empirical Cohort Data Interpolation Parameters
+        // Historical Absolute Mobility Baseline (% of kids earning more than parents at age 30)
+        const absoluteMobilityData = {
+            1940: 91.5,
+            1950: 79.0,
+            1960: 62.0,
+            1970: 58.0,
+            1980: 50.0,
+            1990: 46.0,
+            2000: 44.0
+        };
+
+        // Standard CPI Multipliers relative to 2026 dollars
+        const cpiMultipliers = {
+            1940: 22.5, 1950: 13.5, 1960: 10.8, 1970: 8.2, 
+            1980: 3.8, 1990: 2.4, 2000: 1.8, 2010: 1.4, 2020: 1.2, 2026: 1.0
+        };
+
+        // Chart.js instances
+        let absoluteChartInstance = null;
+        let stackedChartInstance = null;
+
+        // Quintile names and labels
+        const quintiles = [
+            { id: 'Q1', label: 'Q1: Bottom 20%', range: '< $28,000', color: '#f43f5e' },
+            { id: 'Q2', label: 'Q2: Lower-Mid 20%', range: '$28k - $52k', color: '#fb923c' },
+            { id: 'Q3', label: 'Q3: Middle 20%', range: '$52k - $82k', color: '#f59e0b' },
+            { id: 'Q4', label: 'Q4: Upper-Mid 20%', range: '$82k - $125k', color: '#38bdf8' },
+            { id: 'Q5', label: 'Q5: Top 20%', range: '> $125,000', color: '#10b981' }
+        ];
+
+        // Smooth linear interpolation for given year
+        function getAbsoluteMobilityForYear(year) {
+            const years = Object.keys(absoluteMobilityData).map(Number).sort((a,b) => a-b);
+            if (year <= years[0]) return absoluteMobilityData[years[0]];
+            if (year >= years[years.length - 1]) return absoluteMobilityData[years[years.length - 1]];
+
+            for (let i = 0; i < years.length - 1; i++) {
+                if (year >= years[i] && year <= years[i+1]) {
+                    const t = (year - years[i]) / (years[i+1] - years[i]);
+                    return absoluteMobilityData[years[i]] * (1 - t) + absoluteMobilityData[years[i+1]] * t;
+                }
+            }
+            return 50.0;
+        }
+
+        // Generate 5x5 Transition Matrix (Parent Q -> Child Q) for any given year
+        function getTransitionMatrixForYear(year) {
+            // Chetty Baseline Matrix (1980 cohort)
+            // Rows: Parent Q1..Q5, Columns: Child Q1..Q5
+            const base1980Matrix = [
+                [33.7, 24.2, 17.8, 13.8, 10.5], // Parent Q1
+                [24.2, 24.8, 21.6, 16.8, 12.6], // Parent Q2
+                [17.8, 20.8, 22.0, 21.4, 18.0], // Parent Q3
+                [13.4, 17.0, 21.2, 24.1, 24.3], // Parent Q4
+                [10.9, 13.2, 17.4, 23.9, 34.6]  // Parent Q5
+            ];
+
+            // 1940 Matrix (Higher equality & upward mobility)
+            const base1940Matrix = [
+                [18.0, 22.0, 22.0, 20.0, 18.0],
+                [16.0, 21.0, 22.0, 22.0, 19.0],
+                [14.0, 19.0, 23.0, 23.0, 21.0],
+                [12.0, 17.0, 22.0, 25.0, 24.0],
+                [10.0, 14.0, 19.0, 25.0, 32.0]
+            ];
+
+            // Blend factor t between 1940 and 2000
+            const t = Math.max(0, Math.min(1, (year - 1940) / 60));
+
+            const matrix = [];
+            for (let r = 0; r < 5; r++) {
+                const row = [];
+                let rowSum = 0;
+                for (let c = 0; c < 5; c++) {
+                    const val = base1940Matrix[r][c] * (1 - t) + base1980Matrix[r][c] * t;
+                    row.push(val);
+                    rowSum += val;
+                }
+                // Normalize row to 100%
+                const normalizedRow = row.map(v => (v / rowSum) * 100);
+                matrix.push(normalizedRow);
+            }
+            return matrix;
+        }
+
+        // Calculate 3 Mobility Groups (% Worse, % Same, % More)
+        function calculate3Groups(year, parentQuintileFilter = "ALL") {
+            const overallAbsMobility = getAbsoluteMobilityForYear(year);
+            const matrix = getTransitionMatrixForYear(year);
+
+            // Group 2 (% Same +-5%) is roughly 6.5% - 7.5%
+            const samePct = 7.0;
+
+            if (parentQuintileFilter === "ALL") {
+                const morePct = overallAbsMobility;
+                const worsePct = Math.max(0, 100 - morePct - samePct);
+                return { worse: worsePct, same: samePct, more: morePct };
+            }
+
+            // Specific Parent Quintile calculation
+            const qIdx = parseInt(parentQuintileFilter.replace('Q','')) - 1;
+            
+            // For lower parental quintiles, absolute mobility is higher (lower baseline to surpass)
+            // Adjustment factor based on parent quintile
+            const mult = [1.6, 1.25, 1.0, 0.72, 0.35][qIdx];
+            let qMorePct = Math.min(98.5, Math.max(8.0, overallAbsMobility * mult));
+            let qWorsePct = Math.max(1.0, 100 - qMorePct - samePct);
+
+            return { worse: qWorsePct, same: samePct, more: qMorePct };
+        }
+
+        function renderSankeyDiagram() {
+            const svg = document.getElementById('sankeySvg');
+            if (!svg) return;
+
+            const matrix = getTransitionMatrixForYear(currentYear);
+            const svgWidth = 850;
+            const svgHeight = 420;
+            const nodeWidth = 24;
+            const leftX = 140;
+            const rightX = 710;
+            const topMargin = 50;
+            const heightArea = 330;
+            const nodeGap = 16;
+            const numNodes = 5;
+            const totalGap = nodeGap * (numNodes - 1);
+            const usableHeight = heightArea - totalGap;
+            const slotHeight = usableHeight / numNodes;
+
+            let html = '';
+
+            // Render Section Titles
+            html += `
+                <text x="${leftX}" y="28" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="middle">PARENT QUINTILE (START)</text>
+                <text x="${rightX}" y="28" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="middle">CHILD ADULT QUINTILE (END)</text>
+            `;
+
+            // Calculate Node Positions
+            const parentNodes = [];
+            const childNodes = [];
+
+            for (let i = 0; i < 5; i++) {
+                const y = topMargin + i * (slotHeight + nodeGap);
+                parentNodes.push({ ...quintiles[i], x: leftX - nodeWidth, y, h: slotHeight });
+                childNodes.push({ ...quintiles[i], x: rightX, y, h: slotHeight });
+            }
+
+            // Render Flows (Links)
+            for (let p = 0; p < 5; p++) {
+                const pFilter = `Q${p+1}`;
+                const isSelectedParent = (selectedParentFilter === "ALL" || selectedParentFilter === pFilter);
+
+                for (let c = 0; c < 5; c++) {
+                    const pct = matrix[p][c];
+                    
+                    // Start and end y sub-offsets
+                    const flowPStart = parentNodes[p].y + (c * (slotHeight / 5)) + (slotHeight / 10);
+                    const flowCEnd = childNodes[c].y + (p * (slotHeight / 5)) + (slotHeight / 10);
+
+                    const strokeW = Math.max(2, (pct / 100) * slotHeight * 0.85);
+                    const opacity = isSelectedParent ? 0.45 : 0.08;
+
+                    // Cubic Bezier curve
+                    const x1 = leftX;
+                    const y1 = flowPStart;
+                    const x2 = rightX;
+                    const y2 = flowCEnd;
+                    const cx1 = x1 + 220;
+                    const cx2 = x2 - 220;
+
+                    const d = `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
+
+                    const strokeColor = quintiles[p].color;
+
+                    html += `
+                        <path class="sankey-link" d="${d}" fill="none" stroke="${strokeColor}" stroke-width="${strokeW}" stroke-opacity="${opacity}"
+                              onclick="selectParentFromNode('Q${p+1}')">
+                            <title>Parents Q${p+1} → Child Q${c+1}: ${pct.toFixed(1)}%</title>
+                        </path>
+                    `;
+                }
+            }
+
+            // Render Parent Nodes
+            parentNodes.forEach((node, idx) => {
+                const isSelected = (selectedParentFilter === `Q${idx+1}` || selectedParentFilter === "ALL");
+                const rectOpacity = isSelected ? 1.0 : 0.4;
+
+                html += `
+                    <g class="cursor-pointer" onclick="selectParentFromNode('Q${idx+1}')">
+                        <rect x="${node.x}" y="${node.y}" width="${nodeWidth}" height="${node.h}" rx="6" fill="${node.color}" fill-opacity="${rectOpacity}" stroke="#334155" stroke-width="1"/>
+                        <text x="${node.x - 12}" y="${node.y + node.h/2 - 2}" fill="#f8fafc" font-size="12" font-weight="700" text-anchor="end">${node.id}</text>
+                        <text x="${node.x - 12}" y="${node.y + node.h/2 + 13}" fill="#94a3b8" font-size="10" text-anchor="end">${node.range}</text>
+                    </g>
+                `;
+            });
+
+            // Render Child Nodes
+            childNodes.forEach((node, idx) => {
+                html += `
+                    <g>
+                        <rect x="${node.x}" y="${node.y}" width="${nodeWidth}" height="${node.h}" rx="6" fill="${node.color}" fill-opacity="0.9" stroke="#334155" stroke-width="1"/>
+                        <text x="${node.x + nodeWidth + 12}" y="${node.y + node.h/2 - 2}" fill="#f8fafc" font-size="12" font-weight="700" text-anchor="start">${node.id}</text>
+                        <text x="${node.x + nodeWidth + 12}" y="${node.y + node.h/2 + 13}" fill="#94a3b8" font-size="10" text-anchor="start">${node.range}</text>
+                    </g>
+                `;
+            });
+
+            svg.innerHTML = html;
+        }
+
+        function renderMatrixTable() {
+            const tableBody = document.getElementById('matrixTableBody');
+            if (!tableBody) return;
+
+            const matrix = getTransitionMatrixForYear(currentYear);
+            let html = '';
+
+            for (let r = 0; r < 5; r++) {
+                const qLabel = quintiles[r].label;
+                const groups = calculate3Groups(currentYear, `Q${r+1}`);
+                
+                html += `<tr class="border-b border-slate-800 hover:bg-slate-800/40 transition">`;
+                html += `<td class="p-3 font-semibold text-slate-200 border-r border-slate-800">${qLabel}</td>`;
+
+                for (let c = 0; c < 5; c++) {
+                    const val = matrix[r][c].toFixed(1);
+                    const bgAlpha = (matrix[r][c] / 40).toFixed(2);
+                    html += `<td class="p-3 text-center border-r border-slate-800" style="background-color: rgba(14, 165, 233, ${bgAlpha});">${val}%</td>`;
+                }
+
+                html += `<td class="p-3 text-center font-bold text-emerald-400 font-mono">${groups.more.toFixed(1)}%</td>`;
+                html += `</tr>`;
+            }
+
+            tableBody.innerHTML = html;
+        }
+
+        // Select Parent Quintile from Node click
+        function selectParentFromNode(qId) {
+            const selectEl = document.getElementById('parentQuintileSelect');
+            if (selectEl) {
+                selectEl.value = (selectedParentFilter === qId) ? 'ALL' : qId;
+                updateParentFilter(selectEl.value);
+            }
+        }
+
+        // Filter Parent Change Handler
+        function updateParentFilter(val) {
+            selectedParentFilter = val;
+            updateDashboard();
+        }
+
+        // View Mode Switcher (Flow vs Matrix)
+        function switchViewMode(mode) {
+            currentViewMode = mode;
+            const flowContainer = document.getElementById('sankeyViewContainer');
+            const matrixContainer = document.getElementById('matrixViewContainer');
+            const flowBtn = document.getElementById('viewModeFlowBtn');
+            const matrixBtn = document.getElementById('viewModeMatrixBtn');
+
+            if (mode === 'flow') {
+                flowContainer.classList.remove('hidden');
+                matrixContainer.classList.add('hidden');
+                flowBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500 text-slate-950 transition";
+                matrixBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition";
+            } else {
+                flowContainer.classList.add('hidden');
+                matrixContainer.classList.remove('hidden');
+                flowBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition";
+                matrixBtn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500 text-slate-950 transition";
+            }
+            updateDashboard();
+        }
+
+        function initCharts() {
+            // Chart 1: Absolute Mobility Trend Line
+            const ctx1 = document.getElementById('absoluteMobilityChart').getContext('2d');
+            const yearsArr = [];
+            const absoluteVals = [];
+
+            for (let y = 1940; y <= 2000; y += 2) {
+                yearsArr.push(y);
+                absoluteVals.push(getAbsoluteMobilityForYear(y));
+            }
+
+            absoluteChartInstance = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: yearsArr,
+                    datasets: [{
+                        label: '% Earning More Than Parents',
+                        data: absoluteVals,
+                        borderColor: '#0ea5e9',
+                        backgroundColor: 'rgba(14, 165, 233, 0.15)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#38bdf8',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: (ctx) => `Absolute Mobility: ${ctx.parsed.y.toFixed(1)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { 
+                            min: 30, max: 100, 
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            ticks: { color: '#94a3b8', callback: v => v + '%' } 
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Stacked Area Groups
+            const ctx2 = document.getElementById('stackedGroupsChart').getContext('2d');
+            const worseVals = [];
+            const sameVals = [];
+            const moreVals = [];
+
+            yearsArr.forEach(y => {
+                const g = calculate3Groups(y, "ALL");
+                worseVals.push(g.worse);
+                sameVals.push(g.same);
+                moreVals.push(g.more);
+            });
+
+            stackedChartInstance = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: yearsArr,
+                    datasets: [
+                        {
+                            label: 'Group 3: Earning More',
+                            data: moreVals,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Group 2: Earning Same',
+                            data: sameVals,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.6)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Group 1: Worse Off',
+                            data: worseVals,
+                            borderColor: '#f43f5e',
+                            backgroundColor: 'rgba(244, 63, 94, 0.6)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1e293b',
+                            borderColor: '#334155',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { 
+                            stacked: true, min: 0, max: 100,
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            ticks: { color: '#94a3b8', callback: v => v + '%' } 
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateDashboard() {
+            // Update Year Displays
+            document.getElementById('currentYearDisplay').innerText = currentYear;
+            document.getElementById('yearSlider').value = currentYear;
+
+            // Generation Badge Update
+            const badge = document.getElementById('generationLabelBadge');
+            if (currentYear <= 1945) {
+                badge.innerText = "Silent Generation";
+                badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30";
+            } else if (currentYear <= 1964) {
+                badge.innerText = "Baby Boomer Era";
+                badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30";
+            } else if (currentYear <= 1980) {
+                badge.innerText = "Generation X";
+                badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30";
+            } else if (currentYear <= 1996) {
+                badge.innerText = "Millennial Cohort";
+                badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+            } else {
+                badge.innerText = "Gen Z Cohort";
+                badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30";
+            }
+
+            // Calculate 3 Group Percentages
+            const groups = calculate3Groups(currentYear, selectedParentFilter);
+
+            document.getElementById('group1Val').innerText = `${groups.worse.toFixed(1)}%`;
+            document.getElementById('group1Bar').style.width = `${groups.worse}%`;
+
+            document.getElementById('group2Val').innerText = `${groups.same.toFixed(1)}%`;
+            document.getElementById('group2Bar').style.width = `${groups.same}%`;
+
+            document.getElementById('group3Val').innerText = `${groups.more.toFixed(1)}%`;
+            document.getElementById('group3Bar').style.width = `${groups.more}%`;
+
+            // Matrix Data
+            const matrix = getTransitionMatrixForYear(currentYear);
+            document.getElementById('ragsToRichesVal').innerText = `${matrix[0][4].toFixed(1)}%`;
+            document.getElementById('stuckAtBottomVal').innerText = `${matrix[0][0].toFixed(1)}%`;
+            document.getElementById('stickyAtTopVal').innerText = `${matrix[4][4].toFixed(1)}%`;
+
+            // Update Dynamic Story Text
+            const storyText = document.getElementById('flowStoryText');
+            if (selectedParentFilter === 'ALL') {
+                storyText.innerHTML = `For children born in <b>${currentYear}</b> across all backgrounds, <b>${groups.more.toFixed(1)}%</b> achieved higher real income than their parents (Group 3). <b>${groups.worse.toFixed(1)}%</b> earned less (Group 1). A child born to Q1 (bottom 20%) parents has a <b>${matrix[0][4].toFixed(1)}%</b> chance of reaching Q5 (top 20%).`;
+            } else {
+                const qName = quintiles[parseInt(selectedParentFilter.replace('Q','')) - 1].label;
+                storyText.innerHTML = `Filtering for parents in <b>${qName}</b> (Cohort ${currentYear}): <b>${groups.more.toFixed(1)}%</b> of adult children earned more than their parents (Group 3), while <b>${groups.worse.toFixed(1)}%</b> ended up worse off (Group 1).`;
+            }
+
+            // Render Renderers
+            renderSankeyDiagram();
+            renderMatrixTable();
+
+            // Re-calculate Personal Mobility if calculated before
+            calculatePersonalMobility();
+            updateWhatIfSim();
+        }
+
+        function setYear(y) {
+            currentYear = y;
+            updateDashboard();
+        }
+
+        function onSliderInput(val) {
+            currentYear = parseInt(val);
+            updateDashboard();
+        }
+
+        // Auto-play timeline animation controls
+        function toggleTimelinePlay() {
+            const btnIcon = document.getElementById('playIcon');
+            if (isPlaying) {
+                clearInterval(playInterval);
+                isPlaying = false;
+                btnIcon.setAttribute('data-lucide', 'play');
+            } else {
+                isPlaying = true;
+                btnIcon.setAttribute('data-lucide', 'pause');
+                playInterval = setInterval(() => {
+                    currentYear += 1;
+                    if (currentYear > 2000) currentYear = 1940;
+                    updateDashboard();
+                }, 800);
+            }
+            lucide.createIcons();
+        }
+
+        function calculatePersonalMobility() {
+            const birthYearInput = parseInt(document.getElementById('calcBirthYear').value) || 1985;
+            const parentIncomeInput = parseFloat(document.getElementById('calcParentIncome').value) || 35000;
+            const userIncomeInput = parseFloat(document.getElementById('calcUserIncome').value) || 75000;
+
+            // Hint for parent year
+            document.getElementById('calcParentYearHint').innerText = birthYearInput + 30;
+
+            // CPI Inflation Multiplier (Convert parent income to 2026 dollars)
+            const parentYear = birthYearInput + 30;
+            let cpiMult = 1.8; // default fallback
+            if (parentYear in cpiMultipliers) {
+                cpiMult = cpiMultipliers[parentYear];
+            } else {
+                cpiMult = Math.max(1.0, 1.0 + (2026 - parentYear) * 0.025);
+            }
+
+            const parentsRealIncome = parentIncomeInput * cpiMult;
+            const userRealIncome = userIncomeInput;
+            const realDiff = userRealIncome - parentsRealIncome;
+            const pctChange = (realDiff / parentsRealIncome) * 100;
+
+            document.getElementById('calcParentsRealIncome').innerText = `$${Math.round(parentsRealIncome).toLocaleString()}`;
+            document.getElementById('calcUserRealIncome').innerText = `$${Math.round(userRealIncome).toLocaleString()}`;
+
+            const badge = document.getElementById('calcGroupBadge');
+            const diffDisplay = document.getElementById('calcRealDiffVal');
+
+            if (pctChange > 5.0) {
+                badge.innerText = "Group 3: Upward Mobility";
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                diffDisplay.innerText = `+$${Math.round(realDiff).toLocaleString()} (+${pctChange.toFixed(1)}%)`;
+                diffDisplay.className = "font-bold text-emerald-400 font-mono";
+            } else if (pctChange < -5.0) {
+                badge.innerText = "Group 1: Downward Mobility";
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                diffDisplay.innerText = `-$${Math.round(Math.abs(realDiff)).toLocaleString()} (${pctChange.toFixed(1)}%)`;
+                diffDisplay.className = "font-bold text-rose-400 font-mono";
+            } else {
+                badge.innerText = "Group 2: Earning Approx. Same";
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30";
+                diffDisplay.innerText = `$${Math.round(realDiff).toLocaleString()} (${pctChange.toFixed(1)}%)`;
+                diffDisplay.className = "font-bold text-amber-400 font-mono";
+            }
+
+            const cohortAbsMobility = getAbsoluteMobilityForYear(Math.min(2000, Math.max(1940, birthYearInput)));
+            document.getElementById('calcCohortBenchmarkText').innerHTML = 
+                `For people born in <b>${birthYearInput}</b>, approximately <b>${cohortAbsMobility.toFixed(1)}%</b> earned more than their parents in real terms. Your result places you in <b>${badge.innerText.split(':')[1]}</b>.`;
+        }
+
+        function updateWhatIfSim() {
+            const gdpVal = parseFloat(document.getElementById('whatifGdpSlider').value);
+            const equalVal = parseFloat(document.getElementById('whatifEqualSlider').value);
+
+            document.getElementById('whatifGdpDisplay').innerText = `${gdpVal.toFixed(1)}% GDP Growth`;
+            document.getElementById('whatifEqualDisplay').innerText = `${equalVal}% Redistribution Index`;
+
+            // Baseline 1980 mobility = 50.0%
+            // Growth impact: +1% GDP adds ~6% mobility
+            // Distribution impact: +10% equality adds ~3.8% mobility
+            const gdpBoost = (gdpVal - 2.0) * 6.0;
+            const equalBoost = (equalVal - 20) * 0.38;
+
+            const simMobility = Math.min(95.0, Math.max(25.0, 50.0 + gdpBoost + equalBoost));
+            const diff = simMobility - 50.0;
+
+            document.getElementById('whatifSimVal').innerText = `${simMobility.toFixed(1)}%`;
+            const diffEl = document.getElementById('whatifSimDiff');
+            diffEl.innerText = `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}% relative to baseline`;
+            diffEl.className = diff >= 0 ? "text-xs text-emerald-400 font-mono mt-1" : "text-xs text-rose-400 font-mono mt-1";
+
+            document.getElementById('whatifTakeawayText').innerText = 
+                `Simulated policy combination achieves an absolute mobility rate of ${simMobility.toFixed(1)}%. Notice how broad-based growth sharing provides a substantial multiplier to absolute upward mobility.`;
+        }
+
+        function exportSummaryReport() {
+            const groups = calculate3Groups(currentYear, selectedParentFilter);
+            const reportText = `ECONOMIC & SOCIAL MOBILITY EXPEDITION REPORT
+--------------------------------------------------
+Birth Cohort: ${currentYear}
+Parent Class Filter: ${selectedParentFilter}
+Group 1 (Worse Off Than Parents): ${groups.worse.toFixed(1)}%
+Group 2 (Earning Same +-5%): ${groups.same.toFixed(1)}%
+Group 3 (Earning More Than Parents): ${groups.more.toFixed(1)}%
+Rags to Riches Odds (Q1 -> Q5): ${document.getElementById('ragsToRichesVal').innerText}
+Sticky Top Odds (Q5 -> Q5): ${document.getElementById('stickyAtTopVal').innerText}
+--------------------------------------------------
+Source: Opportunity Insights Empirical Data Model`;
+
+            // Fallback copy implementation for iframe safety
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = reportText;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            alert("Mobility Summary Report copied to clipboard!");
+        }
+
+        // Window Load Initialization
+        window.onload = function() {
+            initCharts();
+            updateDashboard();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
