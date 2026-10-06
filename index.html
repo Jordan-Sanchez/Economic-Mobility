@@ -104,7 +104,7 @@
 </head>
 <body class="min-h-screen text-slate-100 antialiased selection:bg-sky-500 selection:text-white pb-16">
 
-       <!-- Sticky Navigation Header -->
+    <!-- Sticky Navigation Header -->
     <header class="sticky top-0 z-50 glass-panel border-b border-slate-800 backdrop-blur-md bg-slate-900/90">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -136,6 +136,10 @@
                 </nav>
 
                 <div class="flex items-center gap-2">
+                    <a href="https://jordan-sanchez.github.io/Economic-Mobility/" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 transition">
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                        <span>Reference Project</span>
+                    </a>
                     <button onclick="exportSummaryReport()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
                         <i data-lucide="share-2" class="w-3.5 h-3.5 text-sky-400"></i>
                         <span>Export Summary</span>
@@ -155,9 +159,9 @@
                 <div>
                     <div class="flex items-center gap-2 mb-1">
                         <span class="text-xs font-bold uppercase tracking-wider text-sky-400">Interactive Cohort Selection</span>
-                        <span id="generationLabelBadge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Baby Boomer Era</span>
+                        <span id="generationLabelBadge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Silent Generation</span>
                     </div>
-                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Birth Cohort: <span id="currentYearDisplay" class="text-sky-400 font-mono">1980</span></h2>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Birth Cohort: <span id="currentYearDisplay" class="text-sky-400 font-mono">1942</span></h2>
                     <p class="text-sm text-slate-400 mt-1 max-w-2xl">
                         Select a birth year to analyze how children born in that year fared relative to their parents when reaching adulthood (~Age 30).
                     </p>
@@ -165,7 +169,7 @@
 
                 <!-- Generation Preset Buttons -->
                 <div class="flex flex-wrap gap-2 items-center">
-                    <button onclick="setYear(1942)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="silent">
+                    <button onclick="setYear(1942)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-sky-500/20 text-sky-300 border border-sky-500/40 transition" data-gen="silent">
                         Silent Gen (1940-45)
                     </button>
                     <button onclick="setYear(1955)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="boomer">
@@ -174,7 +178,7 @@
                     <button onclick="setYear(1972)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="genx">
                         Gen X (1965-80)
                     </button>
-                    <button onclick="setYear(1988)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-sky-500/20 text-sky-300 border border-sky-500/40 transition" data-gen="millennial">
+                    <button onclick="setYear(1988)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="millennial">
                         Millennials (1981-96)
                     </button>
                     <button onclick="setYear(1999)" class="gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-gen="genz">
@@ -185,13 +189,18 @@
 
             <!-- Timeline Slider Controls -->
             <div class="space-y-4">
-                <div class="flex items-center gap-4">
-                    <button id="playPauseBtn" onclick="toggleTimelinePlay()" class="p-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition flex items-center justify-center shadow-lg shadow-sky-500/25">
-                        <i id="playIcon" data-lucide="play" class="w-5 h-5 fill-current"></i>
+                <div class="flex items-center gap-3">
+                    <button id="playPauseBtn" onclick="toggleTimelinePlay()" class="p-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition flex items-center justify-center shadow-lg shadow-sky-500/25 shrink-0" title="Play / Pause / Replay Timeline">
+                        <i data-lucide="play" class="w-5 h-5"></i>
+                    </button>
+
+                    <button id="speedBtn" onclick="cyclePlaySpeed()" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 font-mono text-xs font-bold transition flex items-center gap-1.5 shrink-0" title="Change Playback Speed">
+                        <i data-lucide="gauge" class="w-4 h-4"></i>
+                        <span id="speedDisplay">1x</span>
                     </button>
 
                     <div class="flex-1 relative">
-                        <input type="range" id="yearSlider" min="1940" max="2000" value="1980" step="1" 
+                        <input type="range" id="yearSlider" min="1940" max="2000" value="1942" step="1" 
                                oninput="onSliderInput(this.value)" 
                                class="w-full h-3 bg-slate-800 rounded-lg appearance-none cursor-pointer">
                         
@@ -688,17 +697,21 @@
     <!-- Footer -->
     <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
         <p>Economic & Social Mobility Interactive Explorer • Built with Empirical Data Models from Opportunity Insights (Raj Chetty et al.)</p>
+        <p class="mt-1">Reference Project: <a href="https://jordan-sanchez.github.io/Economic-Mobility/" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline">jordan-sanchez.github.io/Economic-Mobility</a></p>
+        <p class="mt-1">Vibe Coded by <a href="https://jordan-sanchez.github.io/Economic-Mobility/" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline font-medium">Jordan Sanchez</a> • Designed & Developed with <span class="text-sky-400 font-medium">Google Gemini</span></p>
         <p class="mt-1">Note: All values inflation-adjusted using CPI-U-RS / PCE equivalents. For educational and research visualization purposes.</p>
     </footer>
 
     <script>
         
         // State Variables
-        let currentYear = 1980;
+        let currentYear = 1942;
         let selectedParentFilter = "ALL"; // ALL, Q1, Q2, Q3, Q4, Q5
         let currentViewMode = "flow"; // flow or matrix
         let isPlaying = false;
         let playInterval = null;
+        const speedOptions = [0.5, 1, 1.5, 2, 3];
+        let currentSpeedIdx = 1; // 1x default
 
         // Empirical Cohort Data Interpolation Parameters
         // Historical Absolute Mobility Baseline (% of kids earning more than parents at age 30)
@@ -1125,6 +1138,23 @@
                 badge.className = "px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30";
             }
 
+            // Preset Buttons Highlight Update
+            document.querySelectorAll('.gen-btn').forEach(btn => {
+                const gen = btn.getAttribute('data-gen');
+                let isActive = false;
+                if (gen === 'silent' && currentYear <= 1945) isActive = true;
+                else if (gen === 'boomer' && currentYear >= 1946 && currentYear <= 1964) isActive = true;
+                else if (gen === 'genx' && currentYear >= 1965 && currentYear <= 1980) isActive = true;
+                else if (gen === 'millennial' && currentYear >= 1981 && currentYear <= 1996) isActive = true;
+                else if (gen === 'genz' && currentYear >= 1997) isActive = true;
+
+                if (isActive) {
+                    btn.className = "gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-sky-500/20 text-sky-300 border border-sky-500/40 transition";
+                } else {
+                    btn.className = "gen-btn px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition";
+                }
+            });
+
             // Calculate 3 Group Percentages
             const groups = calculate3Groups(currentYear, selectedParentFilter);
 
@@ -1159,35 +1189,87 @@
             // Re-calculate Personal Mobility if calculated before
             calculatePersonalMobility();
             updateWhatIfSim();
+
+            // Update Play/Pause/Replay icon state
+            updatePlayButtonIcon();
+        }
+
+        function updatePlayButtonIcon() {
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            if (!playPauseBtn) return;
+
+            let iconName = 'play';
+            if (isPlaying) {
+                iconName = 'pause';
+            } else if (currentYear >= 2000) {
+                iconName = 'rotate-ccw';
+            }
+
+            playPauseBtn.innerHTML = `<i data-lucide="${iconName}" class="w-5 h-5"></i>`;
+            if (window.lucide && window.lucide.createIcons) {
+                lucide.createIcons();
+            }
         }
 
         function setYear(y) {
             currentYear = y;
+            if (currentYear >= 2000 && isPlaying) {
+                if (playInterval) clearInterval(playInterval);
+                isPlaying = false;
+            }
             updateDashboard();
         }
 
         function onSliderInput(val) {
             currentYear = parseInt(val);
+            if (currentYear >= 2000 && isPlaying) {
+                if (playInterval) clearInterval(playInterval);
+                isPlaying = false;
+            }
             updateDashboard();
         }
 
         // Auto-play timeline animation controls
-        function toggleTimelinePlay() {
-            const btnIcon = document.getElementById('playIcon');
+        function cyclePlaySpeed() {
+            currentSpeedIdx = (currentSpeedIdx + 1) % speedOptions.length;
+            const speed = speedOptions[currentSpeedIdx];
+            document.getElementById('speedDisplay').innerText = `${speed}x`;
+
             if (isPlaying) {
-                clearInterval(playInterval);
-                isPlaying = false;
-                btnIcon.setAttribute('data-lucide', 'play');
-            } else {
-                isPlaying = true;
-                btnIcon.setAttribute('data-lucide', 'pause');
-                playInterval = setInterval(() => {
-                    currentYear += 1;
-                    if (currentYear > 2000) currentYear = 1940;
-                    updateDashboard();
-                }, 800);
+                if (playInterval) clearInterval(playInterval);
+                startPlayInterval();
             }
-            lucide.createIcons();
+        }
+
+        function startPlayInterval() {
+            const speed = speedOptions[currentSpeedIdx];
+            const intervalMs = Math.round(800 / speed);
+
+            playInterval = setInterval(() => {
+                currentYear += 1;
+                if (currentYear >= 2000) {
+                    currentYear = 2000;
+                    if (playInterval) clearInterval(playInterval);
+                    isPlaying = false;
+                }
+                updateDashboard();
+            }, intervalMs);
+        }
+
+        function toggleTimelinePlay() {
+            if (isPlaying) {
+                if (playInterval) clearInterval(playInterval);
+                isPlaying = false;
+                updateDashboard();
+            } else {
+                if (currentYear >= 2000) {
+                    currentYear = 1940;
+                }
+                isPlaying = true;
+                updateDashboard();
+
+                startPlayInterval();
+            }
         }
 
         function calculatePersonalMobility() {
